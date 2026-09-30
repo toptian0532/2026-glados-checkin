@@ -16,10 +16,32 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      actions: write
 
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+
+      # 自愈：若签到等 schedule 工作流被 GitHub 以 "disabled_inactivity" 停用，
+      # 这里自动重新启用，避免 2026-04~09 那种半年停摆再次发生。
+      - name: Re-enable disabled scheduled workflows
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          for wf in checkin.yml keep-alive.yml; do
+            state=$(curl -s -H "Authorization: Bearer $GH_TOKEN" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/$wf" \
+              | jq -r '.state')
+            echo "$wf state: $state"
+            case "$state" in
+              disabled_inactivity|disabled_manually)
+                code=$(curl -s -o /dev/null -w "%{http_code}" -X PUT \
+                  -H "Authorization: Bearer $GH_TOKEN" \
+                  "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/$wf/enable")
+                echo "  -> re-enabled (HTTP $code)"
+                ;;
+            esac
+          done
 
       - name: Update timestamp
         run: |
