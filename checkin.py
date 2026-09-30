@@ -69,8 +69,11 @@ def extract_cookie(raw: str):
         return None
     raw = raw.strip()
     
-    # Cookie-Editor 格式 (koa:sess=xxx; koa:sess.sig=yyy)
+    # Cookie-Editor 冒号格式 (koa:sess=xxx; koa:sess.sig=yyy)
+    # 2026 起站点改用 gld:sess 前缀，两种都按原样透传
     if 'koa:sess=' in raw or 'koa:sess.sig=' in raw:
+        return raw
+    if 'gld:sess=' in raw or 'gld:sess.sig=' in raw:
         return raw
         
     # JSON
